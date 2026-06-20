@@ -1,0 +1,17 @@
+# torch is already in the base image (pytorch/pytorch:2.7.0-cuda12.8-cudnn9-runtime)
+# do not add it here — reinstalling would conflict or waste ~2 GB of layer space
+
+# FLUX.1 pipeline
+diffusers>=0.32.0
+transformers>=4.44.0
+accelerate>=0.33.0       # required for enable_sequential_cpu_offload()
+sentencepiece>=0.2.0     # T5 tokenizer used by FLUX text encoder
+protobuf>=4.25.0         # sentencepiece dependency
+
+# Image processing
+Pillow>=10.4.0
+
+# API
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9  # required for FastAPI File/Form endpoints

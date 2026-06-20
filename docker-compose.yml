@@ -1,0 +1,69 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./ollama-entrypoint.sh:/entrypoint.sh
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  ai-chat-service:
+    build: ./services/ai-chat-service
+    ports:
+      - "3001:3001"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      MODEL: ${MODEL:-gemma3:12b}
+      SERPER_API_KEY: ${SERPER_API_KEY}
+      PORT: 3001
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+  create-image-service:
+    build: ./services/create-image-service
+    ports:
+      - "3012:3000"
+    environment:
+      PORT: 3000
+      MAX_IMAGE_MB: 10
+      FLUX_STEPS: 4
+      FLUX_STRENGTH: 0.75
+      FLUX_GUIDANCE: 0.0
+      HF_TOKEN: ${HF_TOKEN}
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    volumes:
+      - huggingface_cache:/cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  client:
+    build: ./client
+    ports:
+      - "80:80"
+    depends_on:
+      - ai-chat-service
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  huggingface_cache:
